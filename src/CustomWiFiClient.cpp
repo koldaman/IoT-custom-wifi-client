@@ -5,37 +5,23 @@
 
 #include <WiFiClientSecure.h>
 #include <CustomWiFiClient.h>
-#include <Ticker.h>
-//#include <LedIndicator.h>
-
-//const int LED_INDICATOR_PIN = 14;   // D4
 
 CustomWiFiClient::CustomWiFiClient() {
    WiFiClientSecure _client;
-//   LedIndicator _ledIndicator;
    _host = "script.google.com";
    _httpPort = 443;
-   _googleScriptMacroId = "AKfycbyALzdR-jK6G6WRplkXtwo1izdghNAfYHcPCzYTyrC3j1W5MmZR";
-}
-
-void CustomWiFiClient::init() {
-//  _ledIndicator.init(LED_INDICATOR_PIN);
+   _googleScriptMacroId = "xxx";
 }
 
 void CustomWiFiClient::sendData(float temp, float hum) {
-   // zablikej behem requestu
-//   _ledIndicator.start(0.5);
-
    if (isnan(temp) || isnan(hum)) {
      Serial.println("Failed to read from DHT sensor!");
- //    _ledIndicator.stop();
      return;
    }
 
    // volame zabezpecene - WiFiClientSecure, pro obycejne HTTP by stacil WiFiClient
    if (!_client.connect(_host, _httpPort)) {
      Serial.println("connection failed");
- //    _ledIndicator.stop();
      return;
    }
 
@@ -62,22 +48,31 @@ void CustomWiFiClient::sendData(float temp, float hum) {
       if (millis() - timeout > 8000) {
         Serial.println(">>> Client Timeout !");
         _client.stop();
-//        _ledIndicator.stop();
         return;
       }
     }
 
     // precteni vystupu volani skriptu
-    /*
-    while (client.available()){
-      String line = client.readStringUntil('\r');
-      Serial.print(line);
+    String firstLine;
+    if (_client.available()){
+      firstLine = _client.readStringUntil('\r');
     }
-    */
 
-    Serial.println();
     Serial.println("closing connection");
 
-    // konec indikace posilani requestu
- //   _ledIndicator.stop();
+    _callback(parseHttpResult(firstLine));
+}
+
+int CustomWiFiClient::parseHttpResult(String httpResultString) {
+   // HTTP/1.1 200 - OK
+   if (httpResultString.length() > 12) {
+      String numericHttpResult = httpResultString.substring(9,12);
+      int httpResult = atoi(numericHttpResult.c_str());
+      return httpResult == 0 ? -1 : httpResult;
+   }
+   return -1; // FAILURE
+}
+
+void CustomWiFiClient::sentCallback(void (*callback)(int)) {
+   _callback = callback;
 }

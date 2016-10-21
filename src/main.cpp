@@ -6,8 +6,11 @@
 #include <DNSServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 #include <CustomWiFiClient.h>
+#include <Blink.h>
 
 CustomWiFiClient client;
+
+Blink blinker(14 /* PIN */);
 
 float temp;
 float hum;
@@ -21,7 +24,6 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   //if you used auto generated SSID, print it
   Serial.println(myWiFiManager->getConfigPortalSSID());
   //entered config mode, make led toggle faster
-//  wifiTicker.start(0.2);
 }
 
 void readAndSend() {
@@ -37,14 +39,23 @@ void readAndSend() {
    client.sendData(temp, hum);
 }
 
+void handleDataSent(int httpResult) {
+   Serial.print("HttpResult: ");
+   Serial.print(httpResult);
+   if (httpResult >= 200 && httpResult < 300) {
+      Serial.println(" - OK");
+      blinker.init({10}, 1);
+   } else {
+      Serial.println(" - FAILED");
+      blinker.init({10,50,10,50,10}, 1);
+   }
+   blinker.start();
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
 
-//  wifiTicker.init(LED_INDICATOR_PIN);
-
-  // start ticker with 0.5 because we start in AP mode and try to connect
-//  wifiTicker.start(0.6);
 
   //WiFiManage - Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
@@ -76,9 +87,8 @@ void setup() {
   Serial.print("on local ip: ");
   Serial.println(WiFi.localIP());
 
-//  wifiTicker.stop();
-
-  client.init();
+  client.sentCallback(handleDataSent);
+  readAndSend();
 }
 
 void loop() {
