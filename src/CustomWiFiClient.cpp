@@ -5,23 +5,30 @@
 
 #include <WiFiClientSecure.h>
 #include <CustomWiFiClient.h>
+#include <Constants.h>
 
 CustomWiFiClient::CustomWiFiClient() {
    WiFiClientSecure _client;
    _host = "script.google.com";
    _httpPort = 443;
-   _googleScriptMacroId = "xxx";
+   _googleScriptMacroId = Constants::MACRO_ID();
 }
 
 void CustomWiFiClient::sendData(float temp, float hum) {
    if (isnan(temp) || isnan(hum)) {
      Serial.println("Failed to read from DHT sensor!");
+     if (_callback) {
+        _callback(parseHttpResult("FAIL"));
+     }
      return;
    }
 
    // volame zabezpecene - WiFiClientSecure, pro obycejne HTTP by stacil WiFiClient
    if (!_client.connect(_host, _httpPort)) {
      Serial.println("connection failed");
+     if (_callback) {
+        _callback(parseHttpResult("FAIL"));
+     }
      return;
    }
 
@@ -60,7 +67,9 @@ void CustomWiFiClient::sendData(float temp, float hum) {
 
     Serial.println("closing connection");
 
-    _callback(parseHttpResult(firstLine));
+    if (_callback) {
+      _callback(parseHttpResult(firstLine));
+    }
 }
 
 int CustomWiFiClient::parseHttpResult(String httpResultString) {
